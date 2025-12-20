@@ -1,5 +1,9 @@
 from fastapi.testclient import TestClient
 from app.main import app
+from app.db.database import Base, engine
+
+# Ensure tables exist for tests (CI starts with empty workspace)
+Base.metadata.create_all(bind=engine)
 
 client = TestClient(app)
 
