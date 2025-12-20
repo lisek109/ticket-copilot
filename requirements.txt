@@ -3,6 +3,8 @@
 # ---------------------------
 fastapi==0.110.0          # High-performance Python web framework for APIs
 uvicorn[standard]==0.27.1 # ASGI server to run FastAPI
+# FastAPI test client depends on it
+requests==2.31.0
 
 # ---------------------------
 # Database & ORM
