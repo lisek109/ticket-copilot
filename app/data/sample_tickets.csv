@@ -1,0 +1,9 @@
+text,category,priority
+"Cannot login to VPN, password reset needed",access,2
+"VPN connection fails with error 812",access,2
+"Service is down, outage across office",incident,1
+"Critical system down after update",incident,1
+"Invoice incorrect, please fix billing",billing,3
+"Payment failed on last invoice",billing,3
+"How do I install Teams on laptop?",general,4
+"Request: new monitor for workstation",general,4
