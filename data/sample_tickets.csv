@@ -3,19 +3,47 @@ text,category,priority
 "VPN connection fails with error 812",access,2
 "User locked out of account after MFA failure",access,2
 "Password expired and cannot be changed",access,2
+"VPN token not syncing with mobile app",access,2
+"Firewall blocking access to internal site",access,2
+"SSO login not working for external partners",access,2
+"Account disabled after too many login attempts",access,2
 "Service is down, outage across office",incident,1
 "Critical system down after update",incident,1
 "Database latency causing major slowdown",incident,1
 "Email service unavailable for entire department",incident,1
+"Backup job failed overnight",incident,1
+"High CPU usage on production server",incident,1
+"Network outage affecting multiple floors",incident,1
+"Monitoring alerts: disk space critically low",incident,1
 "Invoice incorrect, please fix billing",billing,3
 "Payment failed on last invoice",billing,3
 "Refund request for duplicated charge",billing,3
 "Subscription renewal charged twice",billing,3
+"Customer charged incorrect VAT amount",billing,3
+"Billing portal shows outdated balance",billing,3
+"Unable to download invoice PDF",billing,3
+"Credit card declined during subscription renewal",billing,3
 "How do I install Teams on laptop?",general,4
 "Request: new monitor for workstation",general,4
 "Need help configuring Outlook signature",general,4
 "How to connect to office WiFi on Mac?",general,4
-"VPN token not syncing with mobile app",access,2
-"Firewall blocking access to internal site",access,2
 "Printer not working on floor 3",general,4
-"Backup job failed overnight",incident,1
+"Request for ergonomic keyboard",general,4
+"How to set up email forwarding?",general,4
+"Request: access to shared mailbox",general,4
+"Password reset link not received",access,2
+"Cannot authenticate with company VPN",access,2
+"Two-factor authentication code not arriving",access,2
+"LDAP authentication timeout",access,2
+"Production API returning 500 errors",incident,1
+"Service degradation reported by monitoring",incident,1
+"Application crash after latest deployment",incident,1
+"Major outage in cloud region",incident,1
+"Invoice shows unexpected service charges",billing,3
+"Payment gateway timeout during checkout",billing,3
+"Incorrect billing cycle applied",billing,3
+"Need clarification on last invoice",billing,3
+"Request for new laptop charger",general,4
+"How to set up VPN on iPhone?",general,4
+"Request: add user to distribution list",general,4
+"Help needed with Teams meeting recording",general,4
