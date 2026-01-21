@@ -1,0 +1,21 @@
+text,category,priority
+"Cannot login to VPN, password reset needed",access,2
+"VPN connection fails with error 812",access,2
+"User locked out of account after MFA failure",access,2
+"Password expired and cannot be changed",access,2
+"Service is down, outage across office",incident,1
+"Critical system down after update",incident,1
+"Database latency causing major slowdown",incident,1
+"Email service unavailable for entire department",incident,1
+"Invoice incorrect, please fix billing",billing,3
+"Payment failed on last invoice",billing,3
+"Refund request for duplicated charge",billing,3
+"Subscription renewal charged twice",billing,3
+"How do I install Teams on laptop?",general,4
+"Request: new monitor for workstation",general,4
+"Need help configuring Outlook signature",general,4
+"How to connect to office WiFi on Mac?",general,4
+"VPN token not syncing with mobile app",access,2
+"Firewall blocking access to internal site",access,2
+"Printer not working on floor 3",general,4
+"Backup job failed overnight",incident,1
