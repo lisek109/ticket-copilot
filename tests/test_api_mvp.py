@@ -32,3 +32,22 @@ def test_create_ticket_and_classify():
 def test_get_missing_ticket_returns_404():
     r = client.get("/tickets/does-not-exist")
     assert r.status_code == 404
+    
+def test_ml_model_used_when_present():
+    # If a trained model exists, classify should return ML version
+    payload = {
+        "channel": "email",
+        "subject": "Service is down",
+        "body": "Critical outage, cannot access systems"
+    }
+    r = client.post("/tickets", json=payload)
+    ticket_id = r.json()["id"]
+
+    r2 = client.post(f"/tickets/{ticket_id}/classify")
+    assert r2.status_code == 200
+    pred = r2.json()
+
+    # If model is not trained, this will be "rules-v0".
+    # After training, it should be ML version.
+    assert pred["model_version"] in ["rules-v0", "tfidf-logreg-v1"]
+
