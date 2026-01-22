@@ -37,6 +37,7 @@ pandas==2.2.1               # Optional: dataset handling
 # ---------------------------
 langchain==0.1.13
 langchain-community==0.0.29
-chromadb==0.4.24
+#chromadb==0.4.24
+faiss-cpu==1.7.4
 pypdf==4.1.0
 sentence-transformers==2.6.1
