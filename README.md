@@ -15,7 +15,7 @@ An end-to-end backend for handling support tickets (email/web):
 - CI: pytest runs on GitHub Actions
 
 ## Tech stack
-- Python, FastAPI
+- Python -Requires Python 3.10+ , FastAPI
 - SQLAlchemy + SQLite (MVP)
 - scikit-learn (TF-IDF + Logistic Regression), joblib
 - pytest
