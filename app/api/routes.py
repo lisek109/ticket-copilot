@@ -72,3 +72,22 @@ def classify(ticket_id: str, db: Session = Depends(get_db)):
 
     db.commit()
     return PredictionOut(**result.__dict__)
+
+
+
+from app.rag.query import rag_answer
+
+@router.post("/tickets/{ticket_id}/answer")
+def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
+    ticket = db.get(models.Ticket, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    question = f"{ticket.subject}\n{ticket.body}"
+    result = rag_answer(question)
+
+    return {
+        "ticket_id": ticket.id,
+        "suggested_answer": result["answer"],
+        "sources": result["sources"],
+    }
