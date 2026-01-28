@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.database import Base, engine
+import os
+from app.rag import query as rag_query
 
 # Ensure tables exist for tests (CI starts with empty workspace)
 Base.metadata.create_all(bind=engine)
@@ -33,6 +35,7 @@ def test_get_missing_ticket_returns_404():
     r = client.get("/tickets/does-not-exist")
     assert r.status_code == 404
     
+    
 def test_ml_model_used_when_present():
     # If a trained model exists, classify should return ML version
     payload = {
@@ -50,4 +53,39 @@ def test_ml_model_used_when_present():
     # If model is not trained, this will be "rules-v0".
     # After training, it should be ML version.
     assert pred["model_version"] in ["rules-v0", "tfidf-logreg-v1"]
+    
+    
+def test_answer_returns_400_when_index_missing(monkeypatch, tmp_path):
+    # Point FAISS_DIR to an empty folder
+    monkeypatch.setenv("FAISS_DIR", str(tmp_path / "no_index_here"))
 
+    # IMPORTANT: reset cache so query.py reloads env + store
+    rag_query.reset_rag_cache()
+
+    payload = {
+        "channel": "email",
+        "subject": "VPN does not work",
+        "body": "Cannot login to VPN"
+    }
+    r = client.post("/tickets", json=payload)
+    ticket_id = r.json()["id"]
+
+    r2 = client.post(f"/tickets/{ticket_id}/answer")
+    assert r2.status_code == 400
+    assert "Run ingest" in r2.json()["detail"]
+    
+
+def test_answer_works_when_index_exists():
+    payload = {
+        "channel": "email",
+        "subject": "VPN does not work",
+        "body": "Hi, I cannot login to VPN since morning. Please help."
+    }
+    r = client.post("/tickets", json=payload)
+    ticket_id = r.json()["id"]
+
+    r2 = client.post(f"/tickets/{ticket_id}/answer")
+    assert r2.status_code == 200
+    data = r2.json()
+    assert isinstance(data["suggested_answer"], str)
+    assert isinstance(data["sources"], list)

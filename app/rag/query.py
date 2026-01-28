@@ -1,13 +1,27 @@
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_community.vectorstores import FAISS
+import os
 
 # Directory where FAISS index was saved by ingest.py
-FAISS_DIR = "faiss_store"
+FAISS_DIR = os.getenv("FAISS_DIR", "faiss_store")
 
 # Cache objects so we don't reload model/index on every request
 _embeddings = None
 _store = None
 
+class IndexNotReadyError(RuntimeError):
+    """Raised when FAISS index is not available (ingest not run)."""
+    pass
+
+def reset_rag_cache():
+    """Used by tests to force reloading FAISS index with a different FAISS_DIR."""
+    global _embeddings, _store
+    _embeddings = None
+    _store = None
+    
+def _get_faiss_dir() -> str:
+    # Read ENV at runtime (important for tests/CI/Docker)
+    return os.getenv("FAISS_DIR", "faiss_store")
 
 def _get_store():
     """
@@ -23,13 +37,20 @@ def _get_store():
         _embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
     if _store is None:
-        # Loads FAISS index + docstore from disk
-        # allow_dangerous_deserialization=True is needed because LangChain stores metadata via pickle
-        _store = FAISS.load_local(
-            FAISS_DIR,
-            embeddings=_embeddings,
-            allow_dangerous_deserialization=True,
-        )
+        faiss_dir = _get_faiss_dir()
+        try:
+            # Loads FAISS index + docstore from disk
+            # allow_dangerous_deserialization=True is needed because LangChain stores metadata via pickle
+            _store = FAISS.load_local(
+                faiss_dir,
+                embeddings=_embeddings,
+                allow_dangerous_deserialization=True,
+            )
+        except Exception as e:
+            # Make API return a clean 400 instead of 500
+            raise IndexNotReadyError(
+                f"FAISS index not found or cannot be loaded from '{FAISS_DIR}'. Run ingest first."
+            ) from e
 
     return _store
 
