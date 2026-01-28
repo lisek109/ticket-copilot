@@ -18,6 +18,10 @@ def reset_rag_cache():
     global _embeddings, _store
     _embeddings = None
     _store = None
+    
+def _get_faiss_dir() -> str:
+    # Read ENV at runtime (important for tests/CI/Docker)
+    return os.getenv("FAISS_DIR", "faiss_store")
 
 def _get_store():
     """
@@ -33,11 +37,12 @@ def _get_store():
         _embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
     if _store is None:
+        faiss_dir = _get_faiss_dir()
         try:
             # Loads FAISS index + docstore from disk
             # allow_dangerous_deserialization=True is needed because LangChain stores metadata via pickle
             _store = FAISS.load_local(
-                FAISS_DIR,
+                faiss_dir,
                 embeddings=_embeddings,
                 allow_dangerous_deserialization=True,
             )
