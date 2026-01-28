@@ -75,7 +75,7 @@ def classify(ticket_id: str, db: Session = Depends(get_db)):
 
 
 
-from app.rag.query import rag_answer
+from app.rag.query import rag_answer, IndexNotReadyError
 
 @router.post("/tickets/{ticket_id}/answer")
 def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
@@ -84,7 +84,11 @@ def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     question = f"{ticket.subject}\n{ticket.body}"
-    result = rag_answer(question)
+    
+    try:
+        result = rag_answer(question)
+    except IndexNotReadyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return {
         "ticket_id": ticket.id,
