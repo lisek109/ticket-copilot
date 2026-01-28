@@ -23,6 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Build RAG index (FAISS)
+        run: |
+          python -m app.db.init_db
+          python -m app.rag.ingest
+
       - name: Run tests
         run: |
           pytest -q
