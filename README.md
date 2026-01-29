@@ -14,11 +14,40 @@ An end-to-end backend for handling support tickets (email/web):
 - Audit logging: request_id + hashed input + prediction details
 - CI: pytest runs on GitHub Actions
 
+## Knowledge Base (RAG)
+
+The project includes a local Retrieval-Augmented Generation (RAG) component
+used to suggest answers to tickets based on internal procedures.
+
+- Knowledge base files are stored in `kb/` (PDF / Markdown)
+- Documents are embedded using `sentence-transformers`
+- Similarity search is performed using a local FAISS index
+
+## RAG Ingest (Required)
+
+Before using the `/answer` endpoint, the knowledge base must be ingested
+and indexed locally.
+
+Run once (or whenever KB documents change):
+
+```powershell
+python -m app.rag.ingest
+```
+
+This will:
+- read documents from kb/
+- generate mbeddings
+- build a FAISS index in faiss_store/
+If the index is missing, the /answer endpoint will return HTTP 400
+with a message indicating that ingest is required.
+
+
 ## Tech stack
 - Python -Requires Python 3.10+ , FastAPI
 - SQLAlchemy + SQLite (MVP)
 - scikit-learn (TF-IDF + Logistic Regression), joblib
-- pytest
+- sentence-transformers, FAISS (local vector search)
+- pytest + GitHub Actions (CI)
 
 ## Project structure
 app/
@@ -88,6 +117,16 @@ Example response:
   "confidence": 0.84,
   "model_version": "tfidf-logreg-v1"
 }
+
+## Suggest an answer (RAG)
+
+POST /tickets/{ticket_id}/answer
+
+Returns:
+- suggested_answer: extracted answer based on internal procedures
+- sources: list of document sources and text snippets
+
+This endpoint uses semantic search over the knowledge base (RAG).
 
 ## Tests
 ```powershell
