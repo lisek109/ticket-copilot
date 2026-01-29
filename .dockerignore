@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+
+# Local artifacts
+*.db
+models/*.joblib
+reports/*.json
+faiss_store/
+chroma_store/
+
+# Git
+.git/
+.github/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
