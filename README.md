@@ -133,3 +133,23 @@ This endpoint uses semantic search over the knowledge base (RAG).
 pytest -q
 ```
 
+## Run with Docker
+
+The project can be run in a fully containerized setup.
+The Docker image builds all required artifacts at build time:
+- ML classification model
+- FAISS vector index for the knowledge base
+
+### Build and run
+```bash
+docker compose up --build
+
+Access
+
+API docs: http://localhost:8000/docs
+
+After startup:
+
+/tickets/{id}/classify uses the trained ML model
+
+/tickets/{id}/answer works immediately (FAISS index is prebuilt in the image)

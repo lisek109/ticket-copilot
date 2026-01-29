@@ -1,0 +1,8 @@
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - FAISS_DIR=faiss_store
