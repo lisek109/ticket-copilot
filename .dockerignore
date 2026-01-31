@@ -23,3 +23,23 @@ chroma_store/
 Thumbs.db
 .vscode/
 .idea/
+
+# Tests / tooling
+.pytest_cache/
+.mypy_cache/
+ruff_cache/
+coverage/
+htmlcov/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Local caches 
+.cache/
+**/.cache/
+

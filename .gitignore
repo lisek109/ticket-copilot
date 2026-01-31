@@ -3,3 +3,10 @@ __pycache__/
 *.db
 .env
 models/*.joblib
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+tfplan

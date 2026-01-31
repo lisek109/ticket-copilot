@@ -48,6 +48,8 @@ with a message indicating that ingest is required.
 - scikit-learn (TF-IDF + Logistic Regression), joblib
 - sentence-transformers, FAISS (local vector search)
 - pytest + GitHub Actions (CI)
+- Docker & docker-compose
+- Terraform (Azure Container Apps)
 
 ## Project structure
 app/
@@ -153,3 +155,48 @@ After startup:
 /tickets/{id}/classify uses the trained ML model
 
 /tickets/{id}/answer works immediately (FAISS index is prebuilt in the image)
+```
+
+
+## Infrastructure (Terraform + Azure)
+
+The project includes Infrastructure as Code (IaC) definitions
+for deploying the API to Azure using **Terraform** and **Azure Container Apps**.
+
+### Provisioned resources
+- Resource Group
+- Azure Container Registry (ACR)
+- Azure Container Apps Environment
+- Container App (FastAPI API)
+- Log Analytics Workspace
+- Monthly cost budget with email alerts
+
+### Why Azure Container Apps?
+- Docker-first deployment model
+- No Kubernetes management overhead
+- Autoscaling (including scale-to-zero)
+- Well suited for small/medium backend + AI services
+
+### Deployment flow (manual)
+1. Build Docker image locally
+2. Provision Azure infrastructure with Terraform
+3. Push Docker image to Azure Container Registry
+4. Deploy image via Azure Container Apps
+
+> Terraform state is stored locally for demo purposes.
+> The setup is intentionally simplified (single environment, admin ACR access)
+> to keep the project focused on backend + ML/RAG logic.
+
+### Pushing image to Azure Container Registry (example)
+
+After provisioning infrastructure, the Docker image can be pushed to ACR:
+
+```bash
+az acr login --name <acrName>
+
+docker tag ticket-email-copilot-api:latest \
+  <loginServer>/ticket-email-copilot-api:latest
+
+docker push <loginServer>/ticket-email-copilot-api:latest
+```
+Then set container_image in terraform.tfvars and re-apply Terraform.
