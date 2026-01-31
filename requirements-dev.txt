@@ -1,0 +1,10 @@
+-r requirements.txt
+
+# ---------------------------
+# Dev & testing 
+# ---------------------------
+pytest==8.0.1             # Testing framework
+httpx==0.26.0             # HTTP client for testing FastAPI
+
+# FastAPI test client depends on it
+requests==2.31.0

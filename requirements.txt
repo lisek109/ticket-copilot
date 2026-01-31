@@ -1,10 +1,14 @@
+# Forcing torch cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+
+
 # ---------------------------
 # Core API framework
 # ---------------------------
 fastapi==0.110.0          # High-performance Python web framework for APIs
 uvicorn[standard]==0.27.1 # ASGI server to run FastAPI
-# FastAPI test client depends on it
-requests==2.31.0
+
 
 # ---------------------------
 # Database & ORM
@@ -17,12 +21,6 @@ pydantic==2.6.1           # Data validation and serialization
 # Configuration & utilities
 # ---------------------------
 python-dotenv==1.0.1      # Load environment variables from .env files
-
-# ---------------------------
-# Dev & testing 
-# ---------------------------
-pytest==8.0.1             # Testing framework
-httpx==0.26.0             # HTTP client for testing FastAPI
 
 
 # ---------------------------
