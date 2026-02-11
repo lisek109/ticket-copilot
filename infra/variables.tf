@@ -23,7 +23,7 @@ variable "container_image" {
 }
 
 variable "budget_amount_eur" {
-  description = "Monthly budget amount in NOK for cost control."
+  description = "Monthly budget amount in EUR for cost control."
   type        = number
   default     = 200
 }
