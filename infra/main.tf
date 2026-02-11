@@ -1,3 +1,8 @@
+
+locals {
+  acr_name = "${replace(lower(var.prefix), "/[^a-z0-9]/", "")}projectacr"
+}
+
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
@@ -21,7 +26,7 @@ resource "azurerm_container_app_environment" "cae" {
 
 # Container Registry to store our Docker image
 resource "azurerm_container_registry" "acr" {
-  name                = "${var.prefix}-acr"
+  name                = "${var.prefix}projectacr"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"
@@ -30,7 +35,7 @@ resource "azurerm_container_registry" "acr" {
 
 # Container App running the API
 resource "azurerm_container_app" "api" {
-  name                         = "${var.prefix}-api"
+  name                         = local.acr_name
   container_app_environment_id = azurerm_container_app_environment.cae.id
   resource_group_name          = azurerm_resource_group.rg.name
   revision_mode                = "Single"
@@ -87,7 +92,7 @@ resource "azurerm_consumption_budget_resource_group" "budget" {
   time_grain        = "Monthly"
 
   time_period {
-    start_date = "2026-01-01T00:00:00Z"
+    start_date = "2026-02-01T00:00:00Z"
     # end_date is optional-- omit for ongoing budget
   }
 
