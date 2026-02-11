@@ -5,6 +5,66 @@ An end-to-end backend for handling support tickets (email/web):
 - classifies tickets (category + priority) using an ML baseline (TF-IDF + Logistic Regression)
 - records audit logs for traceability (enterprise-style)
 
+## Architecture Overview
+
+                          ┌──────────────────────────────┐
+                          │        GitHub Actions         │
+                          │  (CI + CD Pipeline on push)   │
+                          └──────────────┬───────────────┘
+                                         │
+                                         │ build + push image
+                                         ▼
+                         ┌────────────────────────────────────┐
+                         │      Azure Container Registry       │
+                         │   ticketcopilotprojectacr.azurecr.io│
+                         └──────────────────┬──────────────────┘
+                                            │
+                                            │ container_image tag (commit SHA)
+                                            ▼
+                    ┌──────────────────────────────────────────────────┐
+                    │              Terraform (IaC)                      │
+                    │  - Container Apps Environment                     │
+                    │  - Container App (FastAPI API)                    │
+                    │  - Log Analytics Workspace                        │
+                    │  - Budget + Alerts                                │
+                    └──────────────────┬───────────────────────────────┘
+                                       │ terraform apply
+                                       ▼
+                     ┌────────────────────────────────────────────┐
+                     │         Azure Container Apps (API)          │
+                     │  - Runs Docker image                        │
+                     │  - Autoscaling (incl. scale-to-zero)        │
+                     │  - Public HTTPS endpoint                    │
+                     └──────────────────┬──────────────────────────┘
+                                        │
+                                        │ HTTP requests
+                                        ▼
+                         ┌──────────────────────────────────┐
+                         │            FastAPI API            │
+                         │  - Ticket creation                │
+                         │  - Classification (ML)            │
+                         │  - RAG answer suggestions         │
+                         │  - Audit logging                  │
+                         └──────────────────┬────────────────┘
+                                            │
+                                            │ local storage inside container
+                                            ▼
+                   ┌────────────────────────────────────────────────────┐
+                   │                     Application                     │
+                   │                                                    │
+                   │  SQLite DB:                                        │
+                   │   - tickets                                        │
+                   │   - audit logs                                     │
+                   │                                                    │
+                   │  ML model (joblib):                                │
+                   │   - TF-IDF + Logistic Regression                   │
+                   │                                                    │
+                   │  RAG subsystem:                                    │
+                   │   - kb/ documents                                  │
+                   │   - FAISS index (faiss_store/)                     │
+                   └────────────────────────────────────────────────────┘
+
+
 ## Features (current)
 - FastAPI API with Swagger UI (`/docs`)
 - SQLite persistence (MVP)
@@ -200,3 +260,14 @@ docker tag ticket-email-copilot-api:latest \
 docker push <loginServer>/ticket-email-copilot-api:latest
 ```
 Then set container_image in terraform.tfvars and re-apply Terraform.
+
+## Continuous Deployment (CD)
+
+The project includes a GitHub Actions CD pipeline.
+
+On every push to `main`:
+- A Docker image is built and tagged with the commit SHA
+- The image is pushed to Azure Container Registry (ACR)
+- Terraform applies infrastructure changes and updates the Container App
+
+This ensures reproducible and automated deployments to Azure Container Apps.
