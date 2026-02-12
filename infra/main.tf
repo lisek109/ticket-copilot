@@ -64,6 +64,11 @@ resource "azurerm_container_app" "api" {
     value = azurerm_container_registry.acr.admin_password
   }
 
+  secret {
+    name  = "aoai-key"
+    value = var.azure_openai_api_key
+  }
+
   template {
     container {
       name   = "api"
@@ -71,10 +76,30 @@ resource "azurerm_container_app" "api" {
       cpu    = 0.5
       memory = "1Gi"
 
-      # Example env vars (add more later)
+
       env {
         name  = "FAISS_DIR"
         value = "faiss_store"
+      }
+
+      env {
+        name  = "AZURE_OPENAI_ENDPOINT"
+        value = var.azure_openai_endpoint
+      }
+
+      env {
+        name  = "AZURE_OPENAI_DEPLOYMENT"
+        value = var.azure_openai_deployment
+      }
+
+      env {
+        name  = "AZURE_OPENAI_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+
+      env {
+        name        = "AZURE_OPENAI_API_KEY"
+        secret_name = "aoai-key"
       }
     }
 
@@ -82,6 +107,7 @@ resource "azurerm_container_app" "api" {
     max_replicas = 1
   }
 }
+
 
 # Budget + notification on the RESOURCE GROUP 
 # Note: notifications trigger emails when thresholds are exceeded. :contentReference[oaicite:2]{index=2}
@@ -114,3 +140,4 @@ resource "azurerm_consumption_budget_resource_group" "budget" {
     contact_emails = var.budget_email != "" ? [var.budget_email] : []
   }
 }
+
