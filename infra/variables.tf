@@ -33,3 +33,25 @@ variable "budget_email" {
   type        = string
   default     = "tomasz@onet.pl"
 }
+
+variable "azure_openai_endpoint" {
+  type        = string
+  description = "Azure OpenAI endpoint, e.g. https://xxx.openai.azure.com"
+}
+
+variable "azure_openai_deployment" {
+  type        = string
+  description = "Azure OpenAI deployment name (model deployment)."
+}
+
+variable "azure_openai_api_version" {
+  type        = string
+  description = "Azure OpenAI api-version."
+  default     = "2024-02-15-preview"
+}
+
+variable "azure_openai_api_key" {
+  type        = string
+  description = "Azure OpenAI API key (SECRET)."
+  sensitive   = true
+}
