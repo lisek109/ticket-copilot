@@ -101,6 +101,16 @@ This will:
 If the index is missing, the /answer endpoint will return HTTP 400
 with a message indicating that ingest is required.
 
+## LLM Answer Synthesis (Azure OpenAI)
+
+The `/answer` endpoint supports LLM-based response drafting:
+- retrieves relevant procedure snippets (FAISS RAG)
+- synthesizes a concise reply using Azure OpenAI
+- returns citations to the internal KB sources
+
+If Azure OpenAI is not configured, the system falls back to an extractive answer.
+
+
 
 ## Tech stack
 - Python -Requires Python 3.10+ , FastAPI

@@ -76,6 +76,7 @@ def classify(ticket_id: str, db: Session = Depends(get_db)):
 
 
 from app.rag.query import rag_answer, IndexNotReadyError
+from app.llm.synthesis import synthesize_answer
 
 @router.post("/tickets/{ticket_id}/answer")
 def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
@@ -83,15 +84,20 @@ def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    question = f"{ticket.subject}\n{ticket.body}"
-    
+    ticket_text = f"{ticket.subject}\n{ticket.body}"
+
     try:
-        result = rag_answer(question)
+        result = rag_answer(ticket_text)
     except IndexNotReadyError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    # Try LLM synthesis; fallback to extractive answer if not configured
+    llm_answer = synthesize_answer(ticket_text, result["sources"])
+    final_answer = llm_answer if llm_answer else result["answer"]
+
     return {
         "ticket_id": ticket.id,
-        "suggested_answer": result["answer"],
+        "suggested_answer": final_answer,
         "sources": result["sources"],
+        "answer_mode": "llm" if llm_answer else "extractive",  
     }
