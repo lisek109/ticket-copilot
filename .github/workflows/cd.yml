@@ -8,42 +8,57 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+      # Terraform binary
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.6"
 
+      # Buildx for docker build
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to ACR
-        run: az acr login --name ${{ secrets.ACR_NAME }}
+      # Login to ACR using admin creds (no Azure CLI)
+      - name: Docker login to ACR
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login "${{ secrets.ACR_LOGIN_SERVER }}" \
+            --username "${{ secrets.ACR_USERNAME }}" \
+            --password-stdin
 
       - name: Build and push image
-        env:
-          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
         run: |
           IMAGE_TAG=${{ github.sha }}
-          docker build -t $ACR_LOGIN_SERVER/ticket-email-copilot-api:$IMAGE_TAG .
-          docker push $ACR_LOGIN_SERVER/ticket-email-copilot-api:$IMAGE_TAG
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG
 
       - name: Terraform init
         working-directory: infra
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
         run: terraform init
 
       - name: Terraform apply (deploy new image)
         working-directory: infra
         env:
-          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
         run: |
           IMAGE_TAG=${{ github.sha }}
-          terraform apply -auto-approve -var="container_image=$ACR_LOGIN_SERVER/ticket-email-copilot-api:$IMAGE_TAG"
+          terraform apply -auto-approve \
+            -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG" \
+            -var="azure_openai_endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+            -var="azure_openai_deployment=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
+            -var="azure_openai_api_version=${{ secrets.AZURE_OPENAI_API_VERSION }}" \
+            -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
