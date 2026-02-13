@@ -13,7 +13,7 @@ variable "location" {
 variable "resource_group_name" {
   description = "Resource group name."
   type        = string
-  default     = "tomekcopilot-rg"
+  default     = "rg-ticketcopilot-weu"
 }
 
 variable "container_image" {

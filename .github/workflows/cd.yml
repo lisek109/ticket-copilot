@@ -47,7 +47,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
         run: terraform init
 
-      - name: Terraform apply (deploy new image)
+      - name: Terraform apply
         working-directory: infra
         env:
           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -57,8 +57,15 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.sha }}
           terraform apply -auto-approve \
+            -var="prefix=${{ vars.TF_PREFIX }}" \
+            -var="location=${{ vars.TF_LOCATION }}" \
+            -var="resource_group_name=${{ vars.TF_RESOURCE_GROUP_NAME }}" \
+            -var="budget_amount_eur=${{ vars.TF_BUDGET_AMOUNT_EUR }}" \
+            -var="budget_email=${{ vars.TF_BUDGET_EMAIL }}" \
             -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG" \
             -var="azure_openai_endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
             -var="azure_openai_deployment=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
             -var="azure_openai_api_version=${{ secrets.AZURE_OPENAI_API_VERSION }}" \
             -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
+
+
