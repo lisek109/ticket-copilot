@@ -57,4 +57,8 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.sha }}
           terraform apply -auto-approve \
-            -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG"
+            -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG" \
+            -var="azure_openai_endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+            -var="azure_openai_deployment=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
+            -var="azure_openai_api_version=${{ secrets.AZURE_OPENAI_API_VERSION }}" \
+            -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
