@@ -38,6 +38,12 @@ jobs:
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG .
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG
 
+      - name: Debug ARM_CLIENT_ID 
+        env: 
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }} 
+        run: |
+          echo "Client ID starts with: ${ARM_CLIENT_ID:0:8}"
+
       - name: Terraform init
         working-directory: infra
         env:
