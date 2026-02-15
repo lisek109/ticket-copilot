@@ -43,5 +43,8 @@ sentence-transformers==2.6.1
 # ---------------------------
 # OpenaI
 # ---------------------------
-openai==0.28.1
+openai==1.40.0
+httpx==0.26.0
+httpcore==1.0.5
+
 

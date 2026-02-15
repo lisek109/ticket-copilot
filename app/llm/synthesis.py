@@ -49,7 +49,7 @@ def synthesize_answer(ticket_text: str, sources: List[Dict[str, Any]]) -> str | 
         ],
         temperature=0.2,
         max_tokens=350,
-        extra_query={"api-version": api_version},
+        
     )
 
     return resp.choices[0].message.content.strip()
