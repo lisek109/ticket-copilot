@@ -38,10 +38,13 @@ langchain-community==0.0.29
 faiss-cpu==1.7.4
 pypdf==4.1.0
 sentence-transformers==2.6.1
-openai==1.40.0
+
 
 # ---------------------------
 # OpenaI
 # ---------------------------
 openai==1.40.0
+httpx==0.26.0
+httpcore==1.0.5
+
 
