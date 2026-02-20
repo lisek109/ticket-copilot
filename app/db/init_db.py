@@ -3,7 +3,7 @@ from app.db import models  # noqa: F401  (ensures models are registered i Base m
 # Importing models ensures all ORM tables are registered in Base.metadata
 
 def init():
-    """Create all tables (MVP only). We'll add Alembic migrations next."""
+    """Create all tables (MVP only). """
     Base.metadata.create_all(bind=engine)
 
 if __name__ == "__main__":

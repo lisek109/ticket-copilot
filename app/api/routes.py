@@ -14,9 +14,10 @@ router = APIRouter()
 def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     """Create a new ticket (email/web request)."""
     ticket = models.Ticket(
-        channel=payload.channel,
-        subject=payload.subject,
-        body=payload.body
+        # channel=payload.channel,
+        # subject=payload.subject,
+        # body=payload.body
+        **payload.model_dump()
     )
     db.add(ticket)
     db.commit()
