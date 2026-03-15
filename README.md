@@ -122,15 +122,20 @@ If Azure OpenAI is not configured, the system falls back to an extractive answer
 - Terraform (Azure Container Apps)
 
 ## Project structure
+```
 app/
-api/ # routes + schemas
-core/ # classifier + utilities
-db/ # database + models
-ml/ # training + model loading/prediction
-data/ # training data (CSV)
-models/ # trained model artifact (joblib)
-tests/ # pytest tests
-
+  api/        # routes + schemas  
+  core/       # classifier + utilities  
+  db/         # database + models  
+  ml/         # training + model loading/prediction  
+  rag/        # retrieval and knowledge base logic  
+  llm/        # Azure OpenAI synthesis  
+data/         # training data (CSV)  
+models/       # trained model artifact (joblib)  
+email_ingest/ # mailbox ingestion and generated reply drafts  
+ui/           # Streamlit demo interface  
+tests/        # pytest tests  
+```
 
 ## Setup (Windows / PowerShell)
 ```powershell
@@ -160,9 +165,9 @@ python -m app.ml.train
 
 This creates:
 
-models/ticket_clf.joblib
-After that, classification endpoint should return:
-model_version = tfidf-logreg-v1
+models/ticket_clf.joblib  
+After that, classification endpoint should return:  
+model_version = tfidf-logreg-v1  
 
 ## API Endpoints
 Create a ticket
@@ -200,10 +205,57 @@ Returns:
 
 This endpoint uses semantic search over the knowledge base (RAG).
 
+## Email Ingestion
+
+The project includes a local IMAP-based ingestion script that can:
+- connect to a real mailbox
+- read unread emails
+- create tickets through the API
+- run classification
+- generate grounded reply suggestions
+- save generated replies locally for review
+
+Example:
+```bash
+python email_ingest/ingest_mailbox.py
+```
+
+Configuration is loaded from .env:
+API_BASE=https://your-container-app-url
+IMAP_HOST=imap.gmail.com
+EMAIL_ADDRESS=your_email@example.com
+EMAIL_PASSWORD=your_app_password
+
 ## Tests
 ```powershell
 pytest -q
 ```
+
+## Continuous Integration (CI)
+
+The project includes a GitHub Actions CI pipeline that runs automatically
+on every push to `main` and on pull requests.
+
+The CI workflow performs the following steps:
+
+1. **Checkout repository**
+2. **Setup Python environment**
+   - Python 3.10
+   - pip dependency cache enabled
+3. **Install dependencies**
+   - `requirements-dev.txt`
+4. **Initialize application state**
+   - create SQLite schema
+   - build FAISS index for the knowledge base
+5. **Run automated tests**
+   - `pytest`
+
+### Why FAISS ingest runs in CI
+
+The `/answer` endpoint depends on a local FAISS index built from the knowledge base.
+
+To ensure tests run against a realistic environment, the CI pipeline performs:
+
 
 ## Run with Docker
 

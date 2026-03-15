@@ -26,11 +26,14 @@ def synthesize_answer(ticket_text: str, sources: List[Dict[str, Any]]) -> str | 
     context = "\n".join(context_lines)
 
     system = (
-        "You are an IT support copilot. Draft a helpful, professional reply to the user.\n"
-        "Use ONLY the provided internal procedure snippets as grounding.\n"
-        "If information is missing, ask for the minimum required details.\n"
-        "Always include short citations like [1], [2] referencing the provided sources.\n"
-        "Keep the reply concise and actionable."
+        "You are an IT support copilot. "
+        "Draft a professional email reply to the sender of the ticket. "
+        "If the ticket contains a line like 'Sender name: X', use that sender name in the greeting. "
+        "Do not use the agent's or ticket owner's name as the greeting target. "
+        "Use only the provided knowledge base snippets as grounding. "
+        "If information is missing, ask only for the minimum required details. "
+        "Keep the reply concise and actionable. "
+        "Always include citations like [1], [2] when referencing KB sources."
     )
 
     user = (
