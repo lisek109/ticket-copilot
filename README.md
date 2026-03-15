@@ -123,13 +123,17 @@ If Azure OpenAI is not configured, the system falls back to an extractive answer
 
 ## Project structure
 app/
-api/ # routes + schemas
-core/ # classifier + utilities
-db/ # database + models
-ml/ # training + model loading/prediction
-data/ # training data (CSV)
-models/ # trained model artifact (joblib)
-tests/ # pytest tests
+  api/        # routes + schemas
+  core/       # classifier + utilities
+  db/         # database + models
+  ml/         # training + model loading/prediction
+  rag/        # retrieval and knowledge base logic
+  llm/        # Azure OpenAI synthesis
+data/         # training data (CSV)
+models/       # trained model artifact (joblib)
+email_ingest/ # mailbox ingestion and generated reply drafts
+ui/           # Streamlit demo interface
+tests/        # pytest tests
 
 
 ## Setup (Windows / PowerShell)
@@ -199,6 +203,27 @@ Returns:
 - sources: list of document sources and text snippets
 
 This endpoint uses semantic search over the knowledge base (RAG).
+
+## Email Ingestion
+
+The project includes a local IMAP-based ingestion script that can:
+- connect to a real mailbox
+- read unread emails
+- create tickets through the API
+- run classification
+- generate grounded reply suggestions
+- save generated replies locally for review
+
+Example:
+```bash
+python email_ingest/ingest_mailbox.py
+```
+
+Configuration is loaded from .env:
+API_BASE=https://your-container-app-url
+IMAP_HOST=imap.gmail.com
+EMAIL_ADDRESS=your_email@example.com
+EMAIL_PASSWORD=your_app_password
 
 ## Tests
 ```powershell

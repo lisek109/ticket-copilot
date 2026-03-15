@@ -1,0 +1,17 @@
+To: tomek2024
+Ticket ID: ae343018-c8ec-4fb6-b515-75c97164ec9a
+Original Subject: vpn nie dziala
+--------------------------------------------------------------------------------
+Witam Robert,
+
+Dziękujemy za zgłoszenie. Proszę na początek:
+
+1. Sprawdź, czy VPN działa na innym połączeniu sieciowym (np. inna sieć Wi-Fi lub dane mobilne).
+2. Uruchom ponownie klienta VPN i spróbuj ponownie się połączyć.
+3. Czy VPN działał wcześniej i od kiedy występuje problem?
+4. Sprawdzimy też, czy nie ma obecnie żadnych incydentów lub prac serwisowych wpływających na działanie VPN.
+
+Proszę o przesłanie tych informacji, abyśmy mogli pomóc dalej.
+
+Pozdrawiam,  
+IT Support [1][2][3]
