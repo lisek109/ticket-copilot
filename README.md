@@ -123,17 +123,17 @@ If Azure OpenAI is not configured, the system falls back to an extractive answer
 
 ## Project structure
 app/
-  api/        # routes + schemas
-  core/       # classifier + utilities
-  db/         # database + models
-  ml/         # training + model loading/prediction
-  rag/        # retrieval and knowledge base logic
-  llm/        # Azure OpenAI synthesis
-data/         # training data (CSV)
-models/       # trained model artifact (joblib)
-email_ingest/ # mailbox ingestion and generated reply drafts
-ui/           # Streamlit demo interface
-tests/        # pytest tests
+  api/        # routes + schemas  
+  core/       # classifier + utilities  
+  db/         # database + models  
+  ml/         # training + model loading/prediction  
+  rag/        # retrieval and knowledge base logic  
+  llm/        # Azure OpenAI synthesis  
+data/         # training data (CSV)  
+models/       # trained model artifact (joblib)  
+email_ingest/ # mailbox ingestion and generated reply drafts  
+ui/           # Streamlit demo interface  
+tests/        # pytest tests  
 
 
 ## Setup (Windows / PowerShell)
@@ -164,9 +164,9 @@ python -m app.ml.train
 
 This creates:
 
-models/ticket_clf.joblib
-After that, classification endpoint should return:
-model_version = tfidf-logreg-v1
+models/ticket_clf.joblib  
+After that, classification endpoint should return:  
+model_version = tfidf-logreg-v1  
 
 ## API Endpoints
 Create a ticket
