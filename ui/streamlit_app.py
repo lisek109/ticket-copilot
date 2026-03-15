@@ -2,38 +2,63 @@ import requests
 import streamlit as st
 
 # Base URL of the deployed API
-# Change this if running locally
+# Change this to localhost when testing a local backend
 API_BASE = "https://ticketcopilotprojectacr.agreeablecliff-25cf21b5.westeurope.azurecontainerapps.io"
 
 
-st.set_page_config(page_title="TicketCopilot", page_icon="🤖", layout="wide")
-
-st.title("TicketCopilot")
-st.markdown("AI assistant for support ticket classification and response generation.")
-
-# Text input simulating an incoming support email
-email_subject = st.text_input("Email subject")
-
-email_body = st.text_area(
-    "Email content",
-    height=200,
-    placeholder="Example: I cannot login to the VPN since this morning...",
+st.set_page_config(
+    page_title="TicketCopilot",
+    page_icon="🤖",
+    layout="wide",
 )
 
-if st.button("Analyze ticket"):
+# Session state keeps a simple in-memory history for the current UI session
+if "ticket_history" not in st.session_state:
+    st.session_state.ticket_history = []
 
-    if not email_body:
+st.title("TicketCopilot")
+st.markdown("AI assistant for support ticket classification and grounded support replies.")
+
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+    st.subheader("New Support Email")
+
+    email_subject = st.text_input("Email subject")
+    email_body = st.text_area(
+        "Email content",
+        height=220,
+        placeholder="Example: I cannot login to the VPN since this morning...",
+    )
+
+    analyze = st.button("Analyze ticket", use_container_width=True)
+
+with right_col:
+    st.subheader("Session History")
+
+    if st.session_state.ticket_history:
+        for item in reversed(st.session_state.ticket_history[-5:]):
+            st.markdown(f"**{item['subject'] or 'No subject'}**")
+            st.caption(f"Ticket ID: {item['ticket_id']}")
+            st.caption(f"Category: {item['category']} | Priority: {item['priority']}")
+            st.divider()
+    else:
+        st.caption("No analyzed tickets yet.")
+
+if analyze:
+    if not email_body.strip():
         st.warning("Please enter email content.")
         st.stop()
 
-    # Create ticket via API
+    # Step 1: Create ticket
     ticket_payload = {
         "channel": "email",
         "subject": email_subject,
         "body": email_body,
     }
 
-    ticket_resp = requests.post(f"{API_BASE}/tickets", json=ticket_payload)
+    with st.spinner("Creating ticket..."):
+        ticket_resp = requests.post(f"{API_BASE}/tickets", json=ticket_payload, timeout=30)
 
     if ticket_resp.status_code != 200:
         st.error("Failed to create ticket.")
@@ -42,36 +67,50 @@ if st.button("Analyze ticket"):
     ticket = ticket_resp.json()
     ticket_id = ticket["id"]
 
-    st.success(f"Ticket created: {ticket_id}")
+    # Step 2: Run classification
+    with st.spinner("Running classification..."):
+        cls_resp = requests.post(f"{API_BASE}/tickets/{ticket_id}/classify", timeout=30)
 
-    # Run classification
-    cls_resp = requests.post(f"{API_BASE}/tickets/{ticket_id}/classify")
+    if cls_resp.status_code != 200:
+        st.error("Failed to classify ticket.")
+        st.stop()
 
-    if cls_resp.status_code == 200:
-        cls = cls_resp.json()
+    cls = cls_resp.json()
 
-        st.subheader("Classification")
+    # Step 3: Generate answer suggestion
+    with st.spinner("Generating grounded response..."):
+        ans_resp = requests.post(f"{API_BASE}/tickets/{ticket_id}/answer", timeout=60)
 
-        col1, col2 = st.columns(2)
+    if ans_resp.status_code != 200:
+        st.error("Failed to generate suggested response.")
+        st.stop()
 
-        with col1:
-            st.metric("Category", cls["category"])
+    ans = ans_resp.json()
 
-        with col2:
-            st.metric("Priority", cls["priority"])
+    # Save simple local UI history
+    st.session_state.ticket_history.append(
+        {
+            "ticket_id": ticket_id,
+            "subject": email_subject,
+            "category": cls["category"],
+            "priority": cls["priority"],
+        }
+    )
 
-    # Generate answer suggestion
-    ans_resp = requests.post(f"{API_BASE}/tickets/{ticket_id}/answer")
+    st.success("Ticket analyzed successfully.")
 
-    if ans_resp.status_code == 200:
-        ans = ans_resp.json()
+    st.subheader("Ticket Details")
+    st.code(ticket_id, language=None)
 
-        st.subheader("Suggested Response")
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    metric_col1.metric("Category", cls["category"])
+    metric_col2.metric("Priority", cls["priority"])
+    metric_col3.metric("Answer Mode", ans.get("answer_mode", "unknown"))
 
-        st.write(ans["suggested_answer"])
+    st.subheader("Suggested Response")
+    st.write(ans["suggested_answer"])
 
-        st.subheader("Sources")
-
-        for src in ans["sources"]:
-            st.markdown(f"**{src['source']}**")
-            st.caption(src["snippet"])
+    st.subheader("Knowledge Sources")
+    for idx, src in enumerate(ans["sources"], start=1):
+        with st.expander(f"Source {idx}: {src['source']}"):
+            st.write(src["snippet"])
