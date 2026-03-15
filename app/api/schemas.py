@@ -24,7 +24,7 @@ class TicketOut(BaseModel):
     body: str
 
 class PredictionOut(BaseModel):
-    # Output schema for classification results
+    # Output schema for classification results  
     model_config = ConfigDict(protected_namespaces=())
 
     category: str        # predicted category (access / incident / etc.)
