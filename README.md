@@ -122,6 +122,7 @@ If Azure OpenAI is not configured, the system falls back to an extractive answer
 - Terraform (Azure Container Apps)
 
 ## Project structure
+```
 app/
   api/        # routes + schemas  
   core/       # classifier + utilities  
@@ -134,7 +135,7 @@ models/       # trained model artifact (joblib)
 email_ingest/ # mailbox ingestion and generated reply drafts  
 ui/           # Streamlit demo interface  
 tests/        # pytest tests  
-
+```
 
 ## Setup (Windows / PowerShell)
 ```powershell
@@ -229,6 +230,32 @@ EMAIL_PASSWORD=your_app_password
 ```powershell
 pytest -q
 ```
+
+## Continuous Integration (CI)
+
+The project includes a GitHub Actions CI pipeline that runs automatically
+on every push to `main` and on pull requests.
+
+The CI workflow performs the following steps:
+
+1. **Checkout repository**
+2. **Setup Python environment**
+   - Python 3.10
+   - pip dependency cache enabled
+3. **Install dependencies**
+   - `requirements-dev.txt`
+4. **Initialize application state**
+   - create SQLite schema
+   - build FAISS index for the knowledge base
+5. **Run automated tests**
+   - `pytest`
+
+### Why FAISS ingest runs in CI
+
+The `/answer` endpoint depends on a local FAISS index built from the knowledge base.
+
+To ensure tests run against a realistic environment, the CI pipeline performs:
+
 
 ## Run with Docker
 
