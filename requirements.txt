@@ -47,5 +47,19 @@ openai==1.40.0
 httpx==0.26.0
 httpcore==1.0.5
 
+
+# ---------------------------
+# UI
+# ---------------------------
 streamlit==1.35.0
 requests==2.31.0
+
+
+
+# ---------------------------
+# Auth-users
+# ---------------------------
+argon2-cffi==23.1.0        # Password hashing with Argon2
+python-jose==3.3.0         # JWT tokens
+python-multipart==0.0.9    # Form handling if needed later
+email-validator==2.1.1     # Required by Pydantic EmailStr

@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+import os
 
 # NOTE: SQLite is used for MVP. 
-DATABASE_URL = "sqlite:///./ticket_copilot.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ticket_copilot.db")
 
 engine = create_engine(
     DATABASE_URL,

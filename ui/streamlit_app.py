@@ -6,6 +6,13 @@ import streamlit as st
 API_BASE = "https://ticketcopilotprojectacr.agreeablecliff-25cf21b5.westeurope.azurecontainerapps.io"
 
 
+def get_auth_headers():
+    token = st.session_state.access_token
+    if not token:
+        return None
+    return {"Authorization": f"Bearer {token}"}
+
+
 st.set_page_config(
     page_title="TicketCopilot",
     page_icon="🤖",
@@ -18,6 +25,26 @@ if "ticket_history" not in st.session_state:
 
 st.title("TicketCopilot")
 st.markdown("AI assistant for support ticket classification and grounded support replies.")
+
+st.subheader("Login")
+
+login_email = st.text_input("Email")
+login_password = st.text_input("Password", type="password")
+
+if st.button("Login"):
+    login_payload = {
+        "email": login_email,
+        "password": login_password,
+    }
+
+    resp = requests.post(f"{API_BASE}/auth/login", json=login_payload, timeout=30)
+
+    if resp.status_code == 200:
+        token_data = resp.json()
+        st.session_state.access_token = token_data["access_token"]
+        st.success("Logged in successfully.")
+    else:
+        st.error("Login failed.")
 
 left_col, right_col = st.columns([2, 1])
 
@@ -48,6 +75,11 @@ with right_col:
 if analyze:
     if not email_body.strip():
         st.warning("Please enter email content.")
+        st.stop()
+        
+    headers = get_auth_headers()
+    if not headers:
+        st.error("You must be logged in.")
         st.stop()
 
     # Step 1: Create ticket
