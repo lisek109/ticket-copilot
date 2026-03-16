@@ -4,6 +4,7 @@ from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 
+
 def gen_uuid() -> str:
     return str(uuid.uuid4())
 
@@ -13,10 +14,12 @@ class Ticket(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    # Minimal fields for MVP
+    
     channel: Mapped[str] = mapped_column(String(20), default="email")  # email/web
     subject: Mapped[str] = mapped_column(String(300), default="")
     body: Mapped[str] = mapped_column(Text)
+    owner_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    owner: Mapped["User | None"] = relationship(back_populates="tickets")
 
     predictions: Mapped[list["TicketPrediction"]] = relationship(
         back_populates="ticket",
@@ -59,3 +62,16 @@ class AuditLog(Base):
 
     # Free-form details for debugging (safe, no secrets)
     details: Mapped[str] = mapped_column(Text, default="")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(255))
+    hashed_password: Mapped[str] = mapped_column(String(255))
+
+    tickets: Mapped[list["Ticket"]] = relationship(back_populates="owner")

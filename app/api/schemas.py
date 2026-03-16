@@ -22,6 +22,7 @@ class TicketOut(BaseModel):
     channel: str
     subject: str
     body: str
+    owner_id: str | None = None
 
 class PredictionOut(BaseModel):
     # Output schema for classification results  

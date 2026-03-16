@@ -7,32 +7,41 @@ from app.db import models
 from app.api.schemas import TicketCreate, TicketOut, PredictionOut
 from app.core.classifier import classify_ticket
 from app.core.utils import sha256_text
+from app.auth.dependencies import get_current_user
 
 router = APIRouter()
 
 @router.post("/tickets", response_model=TicketOut)
-def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
+def create_ticket(payload: TicketCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user),):
     """Create a new ticket (email/web request)."""
     ticket = models.Ticket(
         channel=payload.channel,
         subject=payload.subject,
-        body=payload.body
+        body=payload.body,
+        owner_id=current_user.id
     )
+    
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
     return ticket
 
+
 @router.get("/tickets/{ticket_id}", response_model=TicketOut)
-def get_ticket(ticket_id: str, db: Session = Depends(get_db)):
+def get_ticket(ticket_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user),):
     """Fetch ticket by id."""
     ticket = db.get(models.Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    if ticket.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     return ticket
 
+
 @router.post("/tickets/{ticket_id}/classify", response_model=PredictionOut)
-def classify(ticket_id: str, db: Session = Depends(get_db)):
+def classify(ticket_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user),):
     """
     Run classification for a ticket.
     Stores prediction + audit log.
@@ -40,6 +49,9 @@ def classify(ticket_id: str, db: Session = Depends(get_db)):
     ticket = db.get(models.Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    if ticket.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     request_id = str(uuid.uuid4())
     result = classify_ticket(ticket.subject or "", ticket.body or "")
@@ -79,10 +91,13 @@ from app.rag.query import rag_answer, IndexNotReadyError
 from app.llm.synthesis import synthesize_answer
 
 @router.post("/tickets/{ticket_id}/answer")
-def suggest_answer(ticket_id: str, db: Session = Depends(get_db)):
+def suggest_answer(ticket_id: str, db: Session = Depends(get_db),current_user=Depends(get_current_user),):
     ticket = db.get(models.Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    if ticket.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     ticket_text = f"{ticket.subject}\n{ticket.body}"
 

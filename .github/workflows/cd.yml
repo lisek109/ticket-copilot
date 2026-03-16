@@ -1,32 +1,30 @@
+
 name: CD
 
 on:
-  workflow_dispatch:
   push:
-    branches: ["main"]
+    tags:
+      - "v*"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Terraform binary
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Cache Docker layers
+        uses: actions/cache@v3
         with:
-          terraform_version: "1.6.6"
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
-      # Buildx for docker build
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Login to ACR using admin creds (no Azure CLI)
       - name: Docker login to ACR
         run: |
           echo "${{ secrets.ACR_PASSWORD }}" | docker login "${{ secrets.ACR_LOGIN_SERVER }}" \
@@ -36,14 +34,19 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE_TAG=${{ github.sha }}
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG .
+          docker build \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG .
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG
 
-      - name: Debug ARM_CLIENT_ID 
-        env: 
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }} 
-        run: |
-          echo "Client ID starts with: ${ARM_CLIENT_ID:0:8}"
+      - name: Cache Terraform
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infra/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infra/**/*.tf') }}
 
       - name: Terraform init
         working-directory: infra
@@ -52,7 +55,7 @@ jobs:
           ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-        run: terraform init
+        run: terraform init -plugin-dir ~/.terraform.d/plugin-cache
 
       - name: Terraform apply
         working-directory: infra
@@ -64,15 +67,90 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.sha }}
           terraform apply -auto-approve \
-            -var="prefix=${{ vars.TF_PREFIX }}" \
-            -var="location=${{ vars.TF_LOCATION }}" \
-            -var="resource_group_name=${{ vars.TF_RESOURCE_GROUP_NAME }}" \
-            -var="budget_amount_eur=${{ vars.TF_BUDGET_AMOUNT_EUR }}" \
-            -var="budget_email=${{ vars.TF_BUDGET_EMAIL }}" \
-            -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG" \
-            -var="azure_openai_endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
-            -var="azure_openai_deployment=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
-            -var="azure_openai_api_version=${{ secrets.AZURE_OPENAI_API_VERSION }}" \
-            -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
+            -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG"
+
+
+
+
+
+
+
+
+# name: CD
+
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches: ["main"]
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     permissions:
+#       contents: read
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       # Terraform binary
+#       - name: Set up Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: "1.6.6"
+
+#       # Buildx for docker build
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+
+#       # Login to ACR using admin creds (no Azure CLI)
+#       - name: Docker login to ACR
+#         run: |
+#           echo "${{ secrets.ACR_PASSWORD }}" | docker login "${{ secrets.ACR_LOGIN_SERVER }}" \
+#             --username "${{ secrets.ACR_USERNAME }}" \
+#             --password-stdin
+
+#       - name: Build and push image
+#         run: |
+#           IMAGE_TAG=${{ github.sha }}
+#           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG .
+#           docker push ${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG
+
+#       - name: Debug ARM_CLIENT_ID 
+#         env: 
+#           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }} 
+#         run: |
+#           echo "Client ID starts with: ${ARM_CLIENT_ID:0:8}"
+
+#       - name: Terraform init
+#         working-directory: infra
+#         env:
+#           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+#           ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+#           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+#           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+#         run: terraform init
+
+#       - name: Terraform apply
+#         working-directory: infra
+#         env:
+#           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+#           ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+#           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+#           ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+#         run: |
+#           IMAGE_TAG=${{ github.sha }}
+#           terraform apply -auto-approve \
+#             -var="prefix=${{ vars.TF_PREFIX }}" \
+#             -var="location=${{ vars.TF_LOCATION }}" \
+#             -var="resource_group_name=${{ vars.TF_RESOURCE_GROUP_NAME }}" \
+#             -var="budget_amount_eur=${{ vars.TF_BUDGET_AMOUNT_EUR }}" \
+#             -var="budget_email=${{ vars.TF_BUDGET_EMAIL }}" \
+#             -var="container_image=${{ secrets.ACR_LOGIN_SERVER }}/ticket-email-copilot-api:$IMAGE_TAG" \
+#             -var="azure_openai_endpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+#             -var="azure_openai_deployment=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
+#             -var="azure_openai_api_version=${{ secrets.AZURE_OPENAI_API_VERSION }}" \
+#             -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
 
 
