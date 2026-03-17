@@ -6,9 +6,12 @@ from email.message import Message
 from email.utils import parseaddr
 from pathlib import Path
 from typing import Optional
+import logging
 
 import requests
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Load local environment variables from .env
 load_dotenv()
@@ -24,6 +27,12 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 # Local files used by the ingestion script
 PROCESSED_IDS_FILE = Path("email_ingest/processed_ids.txt")
 GENERATED_REPLIES_DIR = Path("email_ingest/generated_replies")
+
+# Just a fallback logging configuration for this script, since it can be run standalone
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
 
 def decode_mime_header(value: Optional[str]) -> str:
@@ -195,42 +204,50 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
     - generates suggested replies
     - stores generated replies locally for review
     """
+    logger.info("Starting mailbox ingestion limit=%s verbose=%s", limit, verbose)
+
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        print("Missing EMAIL_ADDRESS or EMAIL_PASSWORD in environment.")
+        logger.warning("Missing EMAIL_ADDRESS or EMAIL_PASSWORD in environment")
         return
 
     processed_ids = load_processed_ids()
 
     mail = imaplib.IMAP4_SSL(IMAP_HOST)
     mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+
+    logger.info("Connected to IMAP host=%s email=%s", IMAP_HOST, EMAIL_ADDRESS)
+
     mail.select("inbox")
 
     status, messages = mail.search(None, "UNSEEN")
     if status != "OK":
-        print("Failed to search mailbox.")
+        logger.error("Failed to search mailbox")
         mail.logout()
         return
 
     email_ids = messages[0].split()
+
+    logger.info("Unread emails found count=%s", len(email_ids))
+
     if not email_ids:
-        print("No unread emails found.")
+        logger.info("No unread emails found")
         mail.logout()
         return
 
-    # Process only the newest emails first
     for email_id in email_ids[-limit:]:
+
         status, msg_data = mail.fetch(email_id, "(RFC822)")
         if status != "OK":
-            print(f"Failed to fetch email ID {email_id.decode()}")
+            logger.warning("Failed to fetch email_id=%s", email_id.decode())
             continue
 
         raw_email = msg_data[0][1]
         msg = email.message_from_bytes(raw_email)
 
         message_id = (msg.get("Message-ID") or "").strip()
+
         if message_id and message_id in processed_ids:
-            if verbose:
-                print(f"Skipping already processed email: {message_id}")
+            logger.info("Skipping already processed message_id=%s", message_id)
             continue
 
         subject = decode_mime_header(msg.get("Subject"))
@@ -238,40 +255,54 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
         sender_name = extract_sender_name(from_header)
         body = extract_text_from_message(msg).strip()
 
-        if verbose:
-            print("=" * 80)
-            print(f"From: {from_header}")
-            print(f"Subject: {subject}")
+        logger.info("Processing email subject=%s sender=%s", subject, sender_name)
 
         if not body:
-            print("Skipping email: no plain text body found.")
+            logger.warning("Skipping email with empty body subject=%s", subject)
             continue
 
-        # Create ticket in backend
+        # Create ticket
         ticket_id = create_ticket(subject, body, sender_name)
         if not ticket_id:
+            logger.error("Failed to create ticket for subject=%s", subject)
             continue
 
-        # Run classification (kept for pipeline completeness, but not shown to the end user)
+        logger.info("Ticket created ticket_id=%s", ticket_id)
+
+        # Classification
         classification = classify_ticket(ticket_id)
 
-        # Generate AI reply
+        logger.info(
+            "Classification result ticket_id=%s category=%s priority=%s",
+            ticket_id,
+            classification["category"],
+            classification["priority"],
+        )
+
+        # Answer
         answer = answer_ticket(ticket_id)
         suggested_reply = answer["suggested_answer"]
 
-        # Save generated reply locally
+        logger.info(
+            "Answer generated ticket_id=%s mode=%s",
+            ticket_id,
+            answer.get("answer_mode", "unknown"),
+        )
+
+        # Save reply
         save_generated_reply(ticket_id, sender_name, subject, suggested_reply)
 
-        # Mark message ID as processed
+        logger.info("Saved generated reply ticket_id=%s", ticket_id)
+
+        # Mark processed
         if message_id:
             save_processed_id(message_id)
 
-        # User-facing output: show only the generated reply
+        # 👇 TO ZOSTAWIAMY jako print (user output)
         print("\nGenerated reply:\n")
         print(suggested_reply)
         print("\n" + "-" * 80 + "\n")
 
-        # Optional verbose debug section
         if verbose:
             print("Debug info:")
             print(f"  Ticket ID: {ticket_id}")
@@ -283,6 +314,8 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
                 print(f"    - {src['source']}")
 
     mail.logout()
+
+    logger.info("Mailbox ingestion completed")
 
 
 if __name__ == "__main__":
