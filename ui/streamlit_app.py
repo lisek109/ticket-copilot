@@ -1,9 +1,11 @@
 import requests
 import streamlit as st
+import os
 
 # Base URL of the deployed API
 # Change this to http://localhost:8000 when testing against a local backend
-API_BASE = "https://ticketcopilotprojectacr.agreeablecliff-25cf21b5.westeurope.azurecontainerapps.io"
+#API_BASE = os.getenv("API_BASE", "http://localhost:8000")
+API_BASE = "http://127.0.0.1:8000"
 
 st.set_page_config(
     page_title="TicketCopilot",
@@ -43,7 +45,11 @@ def register_user(email: str, password: str, full_name: str) -> bool:
         "full_name": full_name,
     }
 
-    response = requests.post(f"{API_BASE}/auth/register", json=payload, timeout=30)
+    try:
+        response = requests.post(f"{API_BASE}/auth/register", json=payload, timeout=30)
+    except requests.RequestException as exc:
+        st.error(f"Registration request failed: {exc}")
+        return False
 
     if response.status_code == 200:
         return True
@@ -61,7 +67,11 @@ def login_user(email: str, password: str) -> bool:
         "password": password,
     }
 
-    response = requests.post(f"{API_BASE}/auth/login", json=payload, timeout=30)
+    try:
+        response = requests.post(f"{API_BASE}/auth/login", json=payload, timeout=30)
+    except requests.RequestException as exc:
+        st.error(f"Login request failed: {exc}")
+        return False
 
     if response.status_code == 200:
         token_data = response.json()
