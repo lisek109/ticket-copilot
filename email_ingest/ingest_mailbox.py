@@ -6,33 +6,33 @@ from email.message import Message
 from email.utils import parseaddr
 from pathlib import Path
 from typing import Optional
-import logging
 
 import requests
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
+import logging
 
 # Load local environment variables from .env
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 # Base URL of the deployed API
-API_BASE = os.getenv("API_BASE", "http://localhost:8000")
+#API_BASE = os.getenv("API_BASE", "http://localhost:8000")
+API_BASE = "http://localhost:8000"
 
 # Mailbox configuration
 IMAP_HOST = os.getenv("IMAP_HOST", "imap.gmail.com")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 
+# API authentication for ingestion service user
+AUTH_EMAIL = os.getenv("AUTH_EMAIL", "")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")
+
 # Local files used by the ingestion script
 PROCESSED_IDS_FILE = Path("email_ingest/processed_ids.txt")
 GENERATED_REPLIES_DIR = Path("email_ingest/generated_replies")
-
-# Just a fallback logging configuration for this script, since it can be run standalone
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
 
 
 def decode_mime_header(value: Optional[str]) -> str:
@@ -57,6 +57,7 @@ def decode_mime_header(value: Optional[str]) -> str:
 def extract_text_from_message(msg: Message) -> str:
     """
     Extract plain text body from an email message.
+
     Priority:
     1. text/plain
     2. fallback to empty string if no plain text body is found
@@ -66,7 +67,7 @@ def extract_text_from_message(msg: Message) -> str:
             content_type = part.get_content_type()
             content_disposition = str(part.get("Content-Disposition") or "")
 
-            # Skip attachments
+            # Ignore attachments
             if "attachment" in content_disposition.lower():
                 continue
 
@@ -75,7 +76,7 @@ def extract_text_from_message(msg: Message) -> str:
                 if payload:
                     return payload.decode(
                         part.get_content_charset() or "utf-8",
-                        errors="ignore"
+                        errors="ignore",
                     )
     else:
         if msg.get_content_type() == "text/plain":
@@ -83,7 +84,7 @@ def extract_text_from_message(msg: Message) -> str:
             if payload:
                 return payload.decode(
                     msg.get_content_charset() or "utf-8",
-                    errors="ignore"
+                    errors="ignore",
                 )
 
     return ""
@@ -92,13 +93,11 @@ def extract_text_from_message(msg: Message) -> str:
 def extract_sender_name(from_header: str) -> str:
     """
     Extract a readable sender name from the email 'From' header.
-    Falls back to an empty string if no usable display name exists.
     """
     display_name, email_address = parseaddr(from_header)
     display_name = decode_mime_header(display_name).strip()
 
     if display_name:
-        # Keep only the first token as a friendly first name
         return display_name.split()[0]
 
     if email_address:
@@ -127,18 +126,20 @@ def save_processed_id(message_id: str) -> None:
     """
     PROCESSED_IDS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    with PROCESSED_IDS_FILE.open("a", encoding="utf-8") as f:
-        f.write(message_id + "\n")
+    with PROCESSED_IDS_FILE.open("a", encoding="utf-8") as file:
+        file.write(message_id + "\n")
 
 
 def save_generated_reply(ticket_id: str, sender_name: str, subject: str, reply_text: str) -> None:
     """
     Save the generated reply to a local text file for review.
-    This simulates a 'draft' workflow without sending email.
+    This simulates a draft workflow without sending email.
     """
     GENERATED_REPLIES_DIR.mkdir(parents=True, exist_ok=True)
 
-    safe_subject = "".join(c for c in subject if c.isalnum() or c in (" ", "_", "-")).strip()
+    safe_subject = "".join(
+        char for char in subject if char.isalnum() or char in (" ", "_", "-")
+    ).strip()
     safe_subject = safe_subject[:50].replace(" ", "_") or "no_subject"
 
     output_file = GENERATED_REPLIES_DIR / f"{ticket_id}_{safe_subject}.txt"
@@ -152,12 +153,43 @@ def save_generated_reply(ticket_id: str, sender_name: str, subject: str, reply_t
     )
 
     output_file.write_text(content, encoding="utf-8")
+    logger.info("Saved generated reply draft", extra={"ticket_id": ticket_id, "file": str(output_file)})
 
 
-def create_ticket(subject: str, body: str, sender_name: str) -> Optional[str]:
+def login_and_get_token() -> Optional[str]:
+    """
+    Authenticate against the API and return a JWT access token.
+    """
+    if not AUTH_EMAIL or not AUTH_PASSWORD:
+        logger.error("Missing AUTH_EMAIL or AUTH_PASSWORD in environment")
+        return None
+
+    payload = {
+        "email": AUTH_EMAIL,
+        "password": AUTH_PASSWORD,
+    }
+
+    try:
+        response = requests.post(f"{API_BASE}/auth/login", json=payload, timeout=30)
+    except requests.RequestException as exc:
+        logger.exception("Failed to connect to auth endpoint", exc_info=exc)
+        return None
+
+    if response.status_code != 200:
+        logger.error("Failed to login to API", extra={"status_code": response.status_code, "response": response.text})
+        return None
+
+    token = response.json()["access_token"]
+    logger.info("Successfully authenticated ingestion service user", extra={"auth_email": AUTH_EMAIL})
+    return token
+
+
+def create_ticket(subject: str, body: str, sender_name: str, token: str) -> Optional[str]:
     """
     Create a new ticket via the backend API.
-    Sender name is prepended to the body so the LLM can use it in the reply.
+
+    Sender name is prepended to the body so the LLM can use it
+    when drafting a reply.
     """
     enriched_body = f"Sender name: {sender_name}\n\n{body}" if sender_name else body
 
@@ -167,56 +199,84 @@ def create_ticket(subject: str, body: str, sender_name: str) -> Optional[str]:
         "body": enriched_body,
     }
 
-    response = requests.post(f"{API_BASE}/tickets", json=payload, timeout=30)
-    if response.status_code != 200:
-        print("Failed to create ticket:", response.text)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        response = requests.post(
+            f"{API_BASE}/tickets",
+            json=payload,
+            headers=headers,
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        logger.exception("Failed to create ticket", exc_info=exc)
         return None
 
-    return response.json()["id"]
+    if response.status_code != 200:
+        logger.error("Ticket creation failed", extra={"status_code": response.status_code, "response": response.text})
+        return None
+
+    ticket_id = response.json()["id"]
+    logger.info("Created ticket from email", extra={"ticket_id": ticket_id, "subject": subject})
+    return ticket_id
 
 
-def classify_ticket(ticket_id: str) -> dict:
+def classify_ticket(ticket_id: str, token: str) -> dict:
     """
     Run ticket classification and return the API response.
     """
-    response = requests.post(f"{API_BASE}/tickets/{ticket_id}/classify", timeout=30)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = requests.post(
+        f"{API_BASE}/tickets/{ticket_id}/classify",
+        headers=headers,
+        timeout=30,
+    )
     response.raise_for_status()
     return response.json()
 
 
-def answer_ticket(ticket_id: str) -> dict:
+def answer_ticket(ticket_id: str, token: str) -> dict:
     """
     Generate a suggested reply using RAG + LLM.
     """
-    response = requests.post(f"{API_BASE}/tickets/{ticket_id}/answer", timeout=60)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = requests.post(
+        f"{API_BASE}/tickets/{ticket_id}/answer",
+        headers=headers,
+        timeout=60,
+    )
     response.raise_for_status()
     return response.json()
 
 
-def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
+def process_unread_emails(limit: int = 1, verbose: bool = True) -> None:
     """
     Connect to the mailbox, fetch a few unread emails, and process them.
 
     The script:
     - skips emails that were already processed
-    - creates tickets through the API
+    - creates tickets through the API using JWT auth
     - runs classification
     - generates suggested replies
     - stores generated replies locally for review
     """
-    logger.info("Starting mailbox ingestion limit=%s verbose=%s", limit, verbose)
-
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        logger.warning("Missing EMAIL_ADDRESS or EMAIL_PASSWORD in environment")
+        logger.error("Missing EMAIL_ADDRESS or EMAIL_PASSWORD in environment")
+        return
+
+    token = login_and_get_token()
+    if not token:
+        logger.error("Cannot continue without API token")
         return
 
     processed_ids = load_processed_ids()
 
+    logger.info("Connecting to mailbox", extra={"imap_host": IMAP_HOST, "email_address": EMAIL_ADDRESS})
+
     mail = imaplib.IMAP4_SSL(IMAP_HOST)
     mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-
-    logger.info("Connected to IMAP host=%s email=%s", IMAP_HOST, EMAIL_ADDRESS)
-
     mail.select("inbox")
 
     status, messages = mail.search(None, "UNSEEN")
@@ -226,28 +286,26 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
         return
 
     email_ids = messages[0].split()
-
-    logger.info("Unread emails found count=%s", len(email_ids))
-
     if not email_ids:
         logger.info("No unread emails found")
         mail.logout()
         return
 
-    for email_id in email_ids[-limit:]:
+    logger.info("Unread emails found", extra={"count": len(email_ids)})
 
+    # Process only the newest few emails
+    for email_id in email_ids[-limit:]:
         status, msg_data = mail.fetch(email_id, "(RFC822)")
         if status != "OK":
-            logger.warning("Failed to fetch email_id=%s", email_id.decode())
+            logger.warning("Failed to fetch email", extra={"email_id": email_id.decode(errors='ignore')})
             continue
 
         raw_email = msg_data[0][1]
         msg = email.message_from_bytes(raw_email)
 
         message_id = (msg.get("Message-ID") or "").strip()
-
         if message_id and message_id in processed_ids:
-            logger.info("Skipping already processed message_id=%s", message_id)
+            logger.info("Skipping already processed email", extra={"message_id": message_id})
             continue
 
         subject = decode_mime_header(msg.get("Subject"))
@@ -255,54 +313,53 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
         sender_name = extract_sender_name(from_header)
         body = extract_text_from_message(msg).strip()
 
-        logger.info("Processing email subject=%s sender=%s", subject, sender_name)
+        if verbose:
+            print("=" * 80)
+            print(f"From: {from_header}")
+            print(f"Subject: {subject}")
+
+        logger.info(
+            "Processing unread email",
+            extra={
+                "message_id": message_id,
+                "subject": subject,
+                "sender_name": sender_name,
+            },
+        )
 
         if not body:
-            logger.warning("Skipping email with empty body subject=%s", subject)
+            logger.warning("Skipping email without plain text body", extra={"subject": subject})
             continue
 
-        # Create ticket
-        ticket_id = create_ticket(subject, body, sender_name)
+        ticket_id = create_ticket(subject, body, sender_name, token)
         if not ticket_id:
-            logger.error("Failed to create ticket for subject=%s", subject)
             continue
 
-        logger.info("Ticket created ticket_id=%s", ticket_id)
-
-        # Classification
-        classification = classify_ticket(ticket_id)
-
-        logger.info(
-            "Classification result ticket_id=%s category=%s priority=%s",
-            ticket_id,
-            classification["category"],
-            classification["priority"],
-        )
-
-        # Answer
-        answer = answer_ticket(ticket_id)
+        classification = classify_ticket(ticket_id, token)
+        answer = answer_ticket(ticket_id, token)
         suggested_reply = answer["suggested_answer"]
 
-        logger.info(
-            "Answer generated ticket_id=%s mode=%s",
-            ticket_id,
-            answer.get("answer_mode", "unknown"),
-        )
-
-        # Save reply
         save_generated_reply(ticket_id, sender_name, subject, suggested_reply)
 
-        logger.info("Saved generated reply ticket_id=%s", ticket_id)
-
-        # Mark processed
         if message_id:
             save_processed_id(message_id)
 
-        # 👇 TO ZOSTAWIAMY jako print (user output)
+        # User-facing output: show only the generated reply
         print("\nGenerated reply:\n")
         print(suggested_reply)
         print("\n" + "-" * 80 + "\n")
 
+        logger.info(
+            "Email processed successfully",
+            extra={
+                "ticket_id": ticket_id,
+                "category": classification.get("category"),
+                "priority": classification.get("priority"),
+                "answer_mode": answer.get("answer_mode"),
+            },
+        )
+
+        # Optional verbose debug section
         if verbose:
             print("Debug info:")
             print(f"  Ticket ID: {ticket_id}")
@@ -314,9 +371,8 @@ def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
                 print(f"    - {src['source']}")
 
     mail.logout()
-
-    logger.info("Mailbox ingestion completed")
+    logger.info("Mailbox processing finished")
 
 
 if __name__ == "__main__":
-    process_unread_emails(limit=1, verbose=True)
+    process_unread_emails(limit=3, verbose=True)

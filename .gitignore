@@ -4,6 +4,9 @@ __pycache__/
 .env
 models/*.joblib
 
+email_ingest/generated_replies/
+email_ingest/processed_ids.txt
+
 # Terraform
 .terraform/
 .terraform.lock.hcl
