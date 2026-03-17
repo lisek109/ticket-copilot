@@ -92,7 +92,7 @@ def classify(ticket_id: str, db: Session = Depends(get_db), current_user=Depends
     audit = models.AuditLog(
         request_id=request_id,
         action="ticket.classify",
-        actor="anonymous",
+        actor=current_user.id,
         input_hash=input_hash,
         details=(
             f"category={result.category};"

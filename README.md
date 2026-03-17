@@ -74,6 +74,22 @@ An end-to-end backend for handling support tickets (email/web):
 - Audit logging: request_id + hashed input + prediction details
 - CI: pytest runs on GitHub Actions
 
+## Authentication
+
+The backend uses JWT-based authentication.
+
+Available endpoints:
+- `POST /auth/register`
+- `POST /auth/login`
+
+Protected ticket endpoints require a bearer token:
+- `POST /tickets`
+- `GET /tickets/{ticket_id}`
+- `POST /tickets/{ticket_id}/classify`
+- `POST /tickets/{ticket_id}/answer`
+
+Tickets are user-scoped and can only be accessed by their owner.
+
 ## Knowledge Base (RAG)
 
 The project includes a local Retrieval-Augmented Generation (RAG) component
