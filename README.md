@@ -90,6 +90,22 @@ Protected ticket endpoints require a bearer token:
 
 Tickets are user-scoped and can only be accessed by their owner.
 
+## Demo UI
+
+The project includes a Streamlit-based demo interface.
+
+Features:
+- user registration and login
+- JWT-authenticated API calls
+- ticket analysis demo
+- classification results
+- grounded AI-generated response with citations
+
+Run locally:
+```bash
+streamlit run ui/streamlit_app.py
+```
+
 ## Knowledge Base (RAG)
 
 The project includes a local Retrieval-Augmented Generation (RAG) component
@@ -169,6 +185,15 @@ Open:
 
 http://127.0.0.1:8000/docs
 
+## Database Migrations
+
+The project uses Alembic for schema migrations.
+
+Create a new migration:
+```bash
+alembic revision --autogenerate -m "describe change"
+```
+
 ## Train ML baseline
 
 Training data:
@@ -223,13 +248,17 @@ This endpoint uses semantic search over the knowledge base (RAG).
 
 ## Email Ingestion
 
-The project includes a local IMAP-based ingestion script that can:
+The project includes a local IMAP-based email ingestion script.
+
+It can:
 - connect to a real mailbox
 - read unread emails
-- create tickets through the API
+- authenticate against the API using a technical user
+- create tickets through the backend
 - run classification
 - generate grounded reply suggestions
 - save generated replies locally for review
+- track processed email Message-IDs to avoid duplicates
 
 Example:
 ```bash
@@ -241,6 +270,9 @@ API_BASE=https://your-container-app-url
 IMAP_HOST=imap.gmail.com
 EMAIL_ADDRESS=your_email@example.com
 EMAIL_PASSWORD=your_app_password
+
+AUTH_EMAIL=supportbot@example.com
+AUTH_PASSWORD=StrongPassword123
 
 ## Tests
 ```powershell
