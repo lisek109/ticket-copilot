@@ -18,8 +18,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Base URL of the deployed API
-#API_BASE = os.getenv("API_BASE", "http://localhost:8000")
-API_BASE = "http://localhost:8000"
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
 # Mailbox configuration
 IMAP_HOST = os.getenv("IMAP_HOST", "imap.gmail.com")
@@ -251,7 +250,7 @@ def answer_ticket(ticket_id: str, token: str) -> dict:
     return response.json()
 
 
-def process_unread_emails(limit: int = 1, verbose: bool = True) -> None:
+def process_unread_emails(limit: int = 3, verbose: bool = True) -> None:
     """
     Connect to the mailbox, fetch a few unread emails, and process them.
 
@@ -375,4 +374,4 @@ def process_unread_emails(limit: int = 1, verbose: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    process_unread_emails(limit=3, verbose=True)
+    process_unread_emails(limit=1, verbose=True)
